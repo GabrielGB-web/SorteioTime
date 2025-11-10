@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Sorteio de Times - Compartilhado</title>
+    <title>Sistema de Sorteio de Times</title>
     <style>
         :root {
             --primary-color: #4a6fa5;
@@ -13,7 +13,6 @@
             --dark-color: #343a40;
             --success-color: #28a745;
             --warning-color: #ffc107;
-            --team-colors: [#4a6fa5, #ff6b6b, #28a745, #ffc107, #6f42c1, #fd7e14, #20c997];
         }
         
         * {
@@ -92,11 +91,6 @@
         
         button.success {
             background-color: var(--success-color);
-        }
-        
-        button.warning {
-            background-color: var(--warning-color);
-            color: var(--dark-color);
         }
         
         .participant-list {
@@ -185,6 +179,7 @@
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: rgba(248, 249, 250, 0.8);
         }
         
         .team-title {
@@ -195,6 +190,7 @@
             padding: 8px;
             border-radius: 4px;
             color: white;
+            background-color: var(--primary-color);
         }
         
         .team-list {
@@ -208,7 +204,7 @@
             border-radius: 4px;
             display: flex;
             justify-content: space-between;
-            border-left: 3px solid;
+            border-left: 4px solid var(--primary-color);
         }
         
         .skill-level {
@@ -235,7 +231,7 @@
             padding-top: 10px;
             border-top: 1px solid #ddd;
             font-size: 0.9em;
-            background-color: rgba(255,255,255,0.8);
+            background-color: white;
             padding: 10px;
             border-radius: 4px;
         }
@@ -259,46 +255,6 @@
         .draw-controls button {
             width: auto;
             min-width: 150px;
-        }
-        
-        .sync-status {
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        .sync-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .sync-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .sync-info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .admin-panel {
-            background-color: #f8f9fa;
-            border-left: 4px solid var(--primary-color);
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .setup-panel {
-            background-color: #fff3cd;
-            border-left: 4px solid var(--warning-color);
-            padding: 15px;
-            margin-bottom: 20px;
         }
         
         .team-info {
@@ -351,37 +307,9 @@
 <body>
     <div class="container">
         <header>
-            <h1>⚽ Sistema de Sorteio de Times - COMPARTILHADO</h1>
-            <p>Todos com este link veem os mesmos dados em tempo real</p>
+            <h1>⚽ Sistema de Sorteio de Times</h1>
+            <p>Forme times balanceados automaticamente</p>
         </header>
-        
-        <div class="setup-panel" id="setup-panel">
-            <h3>🔧 Configuração do Banco de Dados</h3>
-            <p>Para sincronizar entre celular e computador, precisamos configurar o Google Sheets como banco de dados:</p>
-            <ol>
-                <li>Clique neste link: <a href="https://docs.google.com/spreadsheets/d/1YOUR_SHEET_ID_HERE/edit?usp=sharing" target="_blank">Criar Planilha Google</a></li>
-                <li>Faça uma cópia da planilha (Arquivo → Fazer uma cópia)</li>
-                <li>Compartilhe a planilha (Compartilhar → Qualquer pessoa com o link pode editar)</li>
-                <li>Cole o ID da planilha abaixo (é a parte do link entre /d/ e /edit)</li>
-            </ol>
-            <div class="form-group">
-                <label for="sheet-id">ID da Planilha Google:</label>
-                <input type="text" id="sheet-id" placeholder="Ex: 1ABC123def456GHI789jkl012">
-            </div>
-            <button id="save-sheet-id" class="success">💾 Salvar Configuração</button>
-        </div>
-        
-        <div class="admin-panel" id="admin-panel" style="display: none;">
-            <h3>📡 Sincronização com Google Sheets</h3>
-            <div id="sync-status" class="sync-status sync-info">
-                Conectando ao banco de dados...
-            </div>
-            <div class="draw-controls">
-                <button id="force-sync" class="success">🔄 Sincronizar Agora</button>
-                <button id="copy-link" class="warning">📋 Copiar Link Compartilhável</button>
-                <button id="clear-data" class="danger">🗑️ Limpar Todos os Dados</button>
-            </div>
-        </div>
         
         <div class="tabs">
             <div class="tab active" data-tab="participants">Participantes</div>
@@ -459,12 +387,6 @@
     </div>
 
     <script>
-        // Configuração do Google Sheets como banco de dados
-        const SHEET_CONFIG = {
-            API_KEY: 'AIzaSyB7Lv4U31okR4R3BPgRPSn2K1-ZvVn7X9c',
-            BASE_URL: 'https://sheets.googleapis.com/v4/spreadsheets'
-        };
-
         // Cores para os times
         const TEAM_COLORS = [
             '#4a6fa5', '#ff6b6b', '#28a745', '#ffc107', 
@@ -473,16 +395,10 @@
         ];
 
         // Dados da aplicação
-        let participants = [];
-        let teamsHistory = [];
-        let currentSheetId = '';
-        let syncInterval;
+        let participants = JSON.parse(localStorage.getItem('participants')) || [];
+        let teamsHistory = JSON.parse(localStorage.getItem('teamsHistory')) || [];
 
         // Elementos da DOM
-        const setupPanel = document.getElementById('setup-panel');
-        const adminPanel = document.getElementById('admin-panel');
-        const sheetIdInput = document.getElementById('sheet-id');
-        const saveSheetIdButton = document.getElementById('save-sheet-id');
         const participantNameInput = document.getElementById('participant-name');
         const participantSkillSelect = document.getElementById('participant-skill');
         const addParticipantButton = document.getElementById('add-participant');
@@ -495,37 +411,15 @@
         const historyList = document.getElementById('history-list');
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
-        const syncStatus = document.getElementById('sync-status');
-        const forceSyncButton = document.getElementById('force-sync');
-        const copyLinkButton = document.getElementById('copy-link');
-        const clearDataButton = document.getElementById('clear-data');
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            checkConfiguration();
+            renderAll();
             setupEventListeners();
         });
 
-        // Verificar configuração
-        function checkConfiguration() {
-            currentSheetId = localStorage.getItem('google_sheet_id');
-            
-            if (currentSheetId) {
-                setupPanel.style.display = 'none';
-                adminPanel.style.display = 'block';
-                loadData();
-                startAutoSync();
-            } else {
-                setupPanel.style.display = 'block';
-                adminPanel.style.display = 'none';
-            }
-        }
-
         // Configurar event listeners
         function setupEventListeners() {
-            // Configuração do Google Sheets
-            saveSheetIdButton.addEventListener('click', saveSheetId);
-
             // Configuração das abas
             tabs.forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -544,215 +438,16 @@
 
             // Sortear times
             drawTeamsButton.addEventListener('click', drawTeams);
-
-            // Sincronização
-            forceSyncButton.addEventListener('click', forceSync);
-            copyLinkButton.addEventListener('click', copyShareableLink);
-            clearDataButton.addEventListener('click', clearAllData);
         }
 
-        // Salvar ID da planilha
-        function saveSheetId() {
-            const sheetId = sheetIdInput.value.trim();
-            
-            if (sheetId) {
-                currentSheetId = sheetId;
-                localStorage.setItem('google_sheet_id', sheetId);
-                setupPanel.style.display = 'none';
-                adminPanel.style.display = 'block';
-                updateSyncStatus('Configuração salva! Carregando dados...', 'info');
-                loadData();
-                startAutoSync();
-            } else {
-                alert('Por favor, cole o ID da planilha Google Sheets');
-            }
-        }
-
-        // Carregar dados do Google Sheets
-        async function loadData() {
-            if (!currentSheetId) return;
-
-            updateSyncStatus('Conectando ao Google Sheets...', 'info');
-            
-            try {
-                // Carregar participantes
-                const participantsData = await loadSheetData('Participantes!A:E');
-                if (participantsData && participantsData.values) {
-                    participants = participantsData.values.slice(1).map(row => ({
-                        id: parseInt(row[0]) || Date.now(),
-                        name: row[1] || '',
-                        skill: row[2] || 'medio',
-                        paid: row[3] === 'TRUE',
-                        present: row[4] !== 'FALSE'
-                    })).filter(p => p.name);
-                }
-
-                // Carregar histórico
-                const historyData = await loadSheetData('Historico!A:F');
-                if (historyData && historyData.values) {
-                    teamsHistory = historyData.values.slice(1).map(row => ({
-                        date: row[0] || '',
-                        time: row[1] || '',
-                        playersPerTeam: parseInt(row[2]) || 5,
-                        teams: JSON.parse(row[3] || '[]'),
-                        timestamp: row[4] || ''
-                    })).filter(h => h.date);
-                }
-
-                updateSyncStatus('Dados carregados com sucesso!', 'success');
-                renderAll();
-            } catch (error) {
-                console.error('Erro ao carregar dados:', error);
-                updateSyncStatus('Erro ao carregar dados. Verifique o ID da planilha.', 'error');
-                participants = JSON.parse(localStorage.getItem('participants')) || [];
-                teamsHistory = JSON.parse(localStorage.getItem('teamsHistory')) || [];
-                renderAll();
-            }
-        }
-
-        // Salvar dados no Google Sheets
-        async function saveData() {
-            if (!currentSheetId) {
-                updateSyncStatus('Configure o Google Sheets primeiro', 'error');
-                return;
-            }
-
-            updateSyncStatus('Salvando no Google Sheets...', 'info');
-
-            try {
-                // Preparar dados para participantes
-                const participantsData = [
-                    ['ID', 'Nome', 'Habilidade', 'Pago', 'Presente'],
-                    ...participants.map(p => [
-                        p.id,
-                        p.name,
-                        p.skill,
-                        p.paid ? 'TRUE' : 'FALSE',
-                        p.present ? 'TRUE' : 'FALSE'
-                    ])
-                ];
-
-                // Preparar dados para histórico
-                const historyData = [
-                    ['Data', 'Hora', 'JogadoresPorTime', 'Times', 'Timestamp'],
-                    ...teamsHistory.map(h => [
-                        h.date,
-                        h.time,
-                        h.playersPerTeam,
-                        JSON.stringify(h.teams),
-                        new Date().toISOString()
-                    ])
-                ];
-
-                // Salvar participantes
-                await saveSheetData('Participantes!A1', participantsData);
-                
-                // Salvar histórico
-                await saveSheetData('Historico!A1', historyData);
-
-                localStorage.setItem('participants', JSON.stringify(participants));
-                localStorage.setItem('teamsHistory', JSON.stringify(teamsHistory));
-
-                updateSyncStatus('Dados sincronizados com sucesso!', 'success');
-            } catch (error) {
-                console.error('Erro ao salvar dados:', error);
-                updateSyncStatus('Erro ao salvar. Dados salvos localmente.', 'error');
-                localStorage.setItem('participants', JSON.stringify(participants));
-                localStorage.setItem('teamsHistory', JSON.stringify(teamsHistory));
-            }
-        }
-
-        // Funções para acessar Google Sheets API
-        async function loadSheetData(range) {
-            const url = `${SHEET_CONFIG.BASE_URL}/${currentSheetId}/values/${range}?key=${SHEET_CONFIG.API_KEY}`;
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error('Erro ao carregar dados da planilha');
-            }
-            
-            return await response.json();
-        }
-
-        async function saveSheetData(range, values) {
-            const url = `${SHEET_CONFIG.BASE_URL}/${currentSheetId}/values/${range}?valueInputOption=RAW&key=${SHEET_CONFIG.API_KEY}`;
-            
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    values: values
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Erro ao salvar dados na planilha');
-            }
-
-            return await response.json();
-        }
-
-        // Sincronização automática
-        function startAutoSync() {
-            syncInterval = setInterval(async () => {
-                await loadData();
-            }, 30000);
-        }
-
-        function forceSync() {
-            updateSyncStatus('Sincronizando...', 'info');
-            saveData();
-        }
-
-        function updateSyncStatus(message, type) {
-            syncStatus.textContent = `📡 ${message}`;
-            syncStatus.className = 'sync-status';
-            
-            switch(type) {
-                case 'success':
-                    syncStatus.classList.add('sync-success');
-                    break;
-                case 'error':
-                    syncStatus.classList.add('sync-error');
-                    break;
-                default:
-                    syncStatus.classList.add('sync-info');
-            }
-        }
-
-        function copyShareableLink() {
-            const currentUrl = window.location.href;
-            navigator.clipboard.writeText(currentUrl).then(() => {
-                updateSyncStatus('Link copiado! Compartilhe com seus amigos.', 'success');
-                setTimeout(() => updateSyncStatus('Pronto para sincronizar', 'info'), 3000);
-            });
-        }
-
-        async function clearAllData() {
-            if (confirm('Tem certeza que deseja limpar TODOS os dados? Esta ação não pode ser desfeita.')) {
-                participants = [];
-                teamsHistory = [];
-                localStorage.removeItem('participants');
-                localStorage.removeItem('teamsHistory');
-                
-                if (currentSheetId) {
-                    try {
-                        await saveSheetData('Participantes!A1', [['ID', 'Nome', 'Habilidade', 'Pago', 'Presente']]);
-                        await saveSheetData('Historico!A1', [['Data', 'Hora', 'JogadoresPorTime', 'Times', 'Timestamp']]);
-                    } catch (error) {
-                        console.error('Erro ao limpar planilha:', error);
-                    }
-                }
-                
-                renderAll();
-                updateSyncStatus('Todos os dados foram limpos', 'success');
-            }
+        // Salvar dados
+        function saveData() {
+            localStorage.setItem('participants', JSON.stringify(participants));
+            localStorage.setItem('teamsHistory', JSON.stringify(teamsHistory));
         }
 
         // Adicionar participante
-        async function addParticipant() {
+        function addParticipant() {
             const name = participantNameInput.value.trim();
             const skill = participantSkillSelect.value;
             
@@ -766,7 +461,7 @@
                         present: true
                     });
                     
-                    await saveData();
+                    saveData();
                     renderParticipantList();
                     renderPaymentList();
                     participantNameInput.value = '';
@@ -779,37 +474,37 @@
         }
 
         // Remover participante
-        async function removeParticipant(id) {
+        function removeParticipant(id) {
             if (confirm('Tem certeza que deseja remover este participante?')) {
                 participants = participants.filter(p => p.id !== id);
-                await saveData();
+                saveData();
                 renderParticipantList();
                 renderPaymentList();
             }
         }
 
         // Alternar presença
-        async function togglePresence(id) {
+        function togglePresence(id) {
             const participant = participants.find(p => p.id === id);
             if (participant) {
                 participant.present = !participant.present;
-                await saveData();
+                saveData();
                 renderParticipantList();
             }
         }
 
         // Alternar status de pagamento
-        async function togglePayment(id) {
+        function togglePayment(id) {
             const participant = participants.find(p => p.id === id);
             if (participant) {
                 participant.paid = !participant.paid;
-                await saveData();
+                saveData();
                 renderPaymentList();
             }
         }
 
-        // Sortear times balanceados - AGORA COM MULTIPLOS TIMES
-        async function drawTeams() {
+        // Sortear times balanceados - SEM JOGADORES EXTRAS
+        function drawTeams() {
             const playersPerTeam = parseInt(playersPerTeamInput.value);
             
             const presentParticipants = participants.filter(p => p.present);
@@ -822,10 +517,18 @@ Necessário: ${playersPerTeam}`);
                 return;
             }
             
-            // Calcular quantos times podem ser formados
+            // Calcular quantos times completos podem ser formados
             const totalPlayers = presentParticipants.length;
             const numberOfTeams = Math.floor(totalPlayers / playersPerTeam);
-            const leftoverPlayers = totalPlayers % playersPerTeam;
+            
+            // Verificar se temos jogadores suficientes para pelo menos um time completo
+            if (numberOfTeams < 1) {
+                alert(`Não há jogadores suficientes para formar um time completo de ${playersPerTeam} jogadores!
+                
+Participantes presentes: ${totalPlayers}
+Necessário: ${playersPerTeam}`);
+                return;
+            }
             
             // Ordenar por habilidade (bom primeiro)
             const sortedBySkill = [...presentParticipants].sort((a, b) => {
@@ -840,7 +543,10 @@ Necessário: ${playersPerTeam}`);
             let teamIndex = 0;
             let direction = 1; // 1 para frente, -1 para trás
             
-            for (let i = 0; i < sortedBySkill.length; i++) {
+            // Distribuir apenas os jogadores que formarão times completos
+            const playersToDistribute = numberOfTeams * playersPerTeam;
+            
+            for (let i = 0; i < playersToDistribute; i++) {
                 teams[teamIndex].push(sortedBySkill[i]);
                 
                 // Muda a direção quando chega no final
@@ -851,21 +557,10 @@ Necessário: ${playersPerTeam}`);
                 } else {
                     teamIndex += direction;
                 }
-                
-                // Para antes de adicionar jogadores extras
-                if (i >= numberOfTeams * playersPerTeam - 1) {
-                    break;
-                }
-            }
-            
-            // Adicionar jogadores extras ao último time
-            if (leftoverPlayers > 0) {
-                const extraPlayers = sortedBySkill.slice(numberOfTeams * playersPerTeam);
-                teams[teams.length - 1].push(...extraPlayers);
             }
             
             // Renderizar os times
-            renderTeams(teams, playersPerTeam, leftoverPlayers);
+            renderTeams(teams, playersPerTeam);
             
             // Salvar no histórico
             const teamsRecord = {
@@ -876,12 +571,12 @@ Necessário: ${playersPerTeam}`);
             };
             
             teamsHistory.unshift(teamsRecord);
-            await saveData();
+            saveData();
             renderHistory();
         }
 
-        // Renderizar times - AGORA COM MULTIPLOS TIMES
-        function renderTeams(teams, playersPerTeam, leftoverPlayers) {
+        // Renderizar times - SEM JOGADORES EXTRAS
+        function renderTeams(teams, playersPerTeam) {
             const skillValues = { 'bom': 3, 'medio': 2, 'iniciante': 1 };
             
             let teamsHTML = '';
@@ -889,13 +584,11 @@ Necessário: ${playersPerTeam}`);
             teams.forEach((team, index) => {
                 const teamSkill = team.reduce((sum, player) => sum + skillValues[player.skill], 0);
                 const teamColor = TEAM_COLORS[index % TEAM_COLORS.length];
-                const isLastTeam = index === teams.length - 1;
-                const hasExtraPlayers = isLastTeam && leftoverPlayers > 0;
                 
                 teamsHTML += `
                     <div class="team" style="border-left: 5px solid ${teamColor}">
                         <div class="team-title" style="background-color: ${teamColor}">
-                            Time ${String.fromCharCode(65 + index)} ${hasExtraPlayers ? '(Com jogadores extras)' : ''}
+                            Time ${String.fromCharCode(65 + index)}
                         </div>
                         <ul class="team-list">
                             ${team.map(player => `
@@ -921,11 +614,14 @@ Necessário: ${playersPerTeam}`);
             
             // Mostrar informações gerais
             const totalPlayers = teams.reduce((sum, team) => sum + team.length, 0);
+            const presentParticipants = participants.filter(p => p.present).length;
+            const unusedPlayers = presentParticipants - totalPlayers;
+            
             teamInfo.innerHTML = `
-                <strong>Formação:</strong> ${teams.length} times formados<br>
-                <strong>Jogadores por time:</strong> ${playersPerTeam} (base)<br>
-                <strong>Total de jogadores:</strong> ${totalPlayers}<br>
-                ${leftoverPlayers > 0 ? `<strong>Jogadores extras:</strong> ${leftoverPlayers} no último time` : ''}
+                <strong>Formação:</strong> ${teams.length} times completos formados<br>
+                <strong>Jogadores por time:</strong> ${playersPerTeam}<br>
+                <strong>Total de jogadores utilizados:</strong> ${totalPlayers}<br>
+                ${unusedPlayers > 0 ? `<strong>Jogadores não utilizados:</strong> ${unusedPlayers} (aguardando para próxima rodada)` : ''}
             `;
             teamInfo.style.display = 'block';
             
