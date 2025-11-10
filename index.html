@@ -266,6 +266,35 @@
             font-weight: bold;
         }
         
+        .draw-options {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .draw-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .draw-option:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .draw-option.active {
+            border-color: var(--primary-color);
+            background-color: rgba(74, 111, 165, 0.1);
+        }
+        
+        .draw-option h3 {
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -300,6 +329,10 @@
             
             .draw-controls button {
                 width: 100%;
+            }
+            
+            .draw-options {
+                flex-direction: column;
             }
         }
     </style>
@@ -347,12 +380,32 @@
         <div class="tab-content" id="teams-tab">
             <div class="card">
                 <h2>Sortear Times Balanceados</h2>
-                <div class="draw-controls">
+                
+                <div class="draw-options">
+                    <div class="draw-option active" data-option="players">
+                        <h3>⚽ Por Jogadores por Time</h3>
+                        <p>Defina quantos jogadores cada time terá</p>
+                    </div>
+                    <div class="draw-option" data-option="teams">
+                        <h3>🏆 Por Quantidade de Times</h3>
+                        <p>Defina quantos times serão formados</p>
+                    </div>
+                </div>
+                
+                <div id="players-option" class="draw-controls">
                     <div class="form-group">
                         <label for="players-per-team">Jogadores por time:</label>
                         <input type="number" id="players-per-team" min="1" value="5">
                     </div>
-                    <button id="draw-teams">Sortear Times Balanceados</button>
+                    <button id="draw-by-players">Sortear por Jogadores</button>
+                </div>
+                
+                <div id="teams-option" class="draw-controls" style="display: none;">
+                    <div class="form-group">
+                        <label for="number-of-teams">Quantidade de times:</label>
+                        <input type="number" id="number-of-teams" min="1" value="2">
+                    </div>
+                    <button id="draw-by-teams">Sortear por Times</button>
                 </div>
                 
                 <div id="team-info" class="team-info" style="display: none;">
@@ -404,13 +457,18 @@
         const addParticipantButton = document.getElementById('add-participant');
         const participantList = document.getElementById('participant-list');
         const paymentList = document.getElementById('payment-list');
-        const drawTeamsButton = document.getElementById('draw-teams');
+        const drawByPlayersButton = document.getElementById('draw-by-players');
+        const drawByTeamsButton = document.getElementById('draw-by-teams');
         const playersPerTeamInput = document.getElementById('players-per-team');
+        const numberOfTeamsInput = document.getElementById('number-of-teams');
         const teamsContainer = document.getElementById('teams-container');
         const teamInfo = document.getElementById('team-info');
         const historyList = document.getElementById('history-list');
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
+        const drawOptions = document.querySelectorAll('.draw-option');
+        const playersOption = document.getElementById('players-option');
+        const teamsOption = document.getElementById('teams-option');
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -433,11 +491,29 @@
                 });
             });
 
+            // Opções de sorteio
+            drawOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    drawOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    const optionType = this.getAttribute('data-option');
+                    if (optionType === 'players') {
+                        playersOption.style.display = 'flex';
+                        teamsOption.style.display = 'none';
+                    } else {
+                        playersOption.style.display = 'none';
+                        teamsOption.style.display = 'flex';
+                    }
+                });
+            });
+
             // Adicionar participante
             addParticipantButton.addEventListener('click', addParticipant);
 
             // Sortear times
-            drawTeamsButton.addEventListener('click', drawTeams);
+            drawByPlayersButton.addEventListener('click', drawByPlayers);
+            drawByTeamsButton.addEventListener('click', drawByTeams);
         }
 
         // Salvar dados
@@ -503,8 +579,8 @@
             }
         }
 
-        // Sortear times balanceados - SEM JOGADORES EXTRAS
-        function drawTeams() {
+        // Sortear por jogadores por time
+        function drawByPlayers() {
             const playersPerTeam = parseInt(playersPerTeamInput.value);
             
             const presentParticipants = participants.filter(p => p.present);
@@ -521,7 +597,6 @@ Necessário: ${playersPerTeam}`);
             const totalPlayers = presentParticipants.length;
             const numberOfTeams = Math.floor(totalPlayers / playersPerTeam);
             
-            // Verificar se temos jogadores suficientes para pelo menos um time completo
             if (numberOfTeams < 1) {
                 alert(`Não há jogadores suficientes para formar um time completo de ${playersPerTeam} jogadores!
                 
@@ -530,8 +605,49 @@ Necessário: ${playersPerTeam}`);
                 return;
             }
             
+            // Ordenar e distribuir jogadores
+            const teams = distributePlayers(presentParticipants, numberOfTeams);
+            
+            // Renderizar os times
+            renderTeams(teams, playersPerTeam, 'players');
+            
+            // Salvar no histórico
+            saveToHistory(teams, playersPerTeam, numberOfTeams, 'players');
+        }
+
+        // Sortear por quantidade de times
+        function drawByTeams() {
+            const numberOfTeams = parseInt(numberOfTeamsInput.value);
+            
+            const presentParticipants = participants.filter(p => p.present);
+            
+            if (presentParticipants.length < numberOfTeams) {
+                alert(`Não há participantes suficientes para formar ${numberOfTeams} times!
+                
+Participantes presentes: ${presentParticipants.length}
+Necessário: ${numberOfTeams}`);
+                return;
+            }
+            
+            // Calcular jogadores por time (distribuição mais igual possível)
+            const totalPlayers = presentParticipants.length;
+            const basePlayersPerTeam = Math.floor(totalPlayers / numberOfTeams);
+            const extraPlayers = totalPlayers % numberOfTeams;
+            
+            // Ordenar e distribuir jogadores
+            const teams = distributePlayers(presentParticipants, numberOfTeams);
+            
+            // Renderizar os times
+            renderTeams(teams, basePlayersPerTeam, 'teams', extraPlayers);
+            
+            // Salvar no histórico
+            saveToHistory(teams, basePlayersPerTeam, numberOfTeams, 'teams', extraPlayers);
+        }
+
+        // Distribuir jogadores usando snake draft
+        function distributePlayers(players, numberOfTeams) {
             // Ordenar por habilidade (bom primeiro)
-            const sortedBySkill = [...presentParticipants].sort((a, b) => {
+            const sortedBySkill = [...players].sort((a, b) => {
                 const skillValues = { 'bom': 3, 'medio': 2, 'iniciante': 1 };
                 return skillValues[b.skill] - skillValues[a.skill];
             });
@@ -539,14 +655,11 @@ Necessário: ${playersPerTeam}`);
             // Criar array de times
             const teams = Array.from({ length: numberOfTeams }, () => []);
             
-            // Distribuir jogadores usando método "snake draft" para balancear
+            // Distribuir jogadores usando método "snake draft"
             let teamIndex = 0;
-            let direction = 1; // 1 para frente, -1 para trás
+            let direction = 1;
             
-            // Distribuir apenas os jogadores que formarão times completos
-            const playersToDistribute = numberOfTeams * playersPerTeam;
-            
-            for (let i = 0; i < playersToDistribute; i++) {
+            for (let i = 0; i < sortedBySkill.length; i++) {
                 teams[teamIndex].push(sortedBySkill[i]);
                 
                 // Muda a direção quando chega no final
@@ -559,14 +672,18 @@ Necessário: ${playersPerTeam}`);
                 }
             }
             
-            // Renderizar os times
-            renderTeams(teams, playersPerTeam);
-            
-            // Salvar no histórico
+            return teams;
+        }
+
+        // Salvar no histórico
+        function saveToHistory(teams, playersPerTeam, numberOfTeams, method, extraPlayers = 0) {
             const teamsRecord = {
                 date: new Date().toLocaleDateString('pt-BR'),
                 time: new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}),
                 playersPerTeam: playersPerTeam,
+                numberOfTeams: numberOfTeams,
+                method: method,
+                extraPlayers: extraPlayers,
                 teams: teams.map(team => team.map(p => ({ name: p.name, skill: p.skill })))
             };
             
@@ -575,8 +692,8 @@ Necessário: ${playersPerTeam}`);
             renderHistory();
         }
 
-        // Renderizar times - SEM JOGADORES EXTRAS
-        function renderTeams(teams, playersPerTeam) {
+        // Renderizar times
+        function renderTeams(teams, playersPerTeam, method, extraPlayers = 0) {
             const skillValues = { 'bom': 3, 'medio': 2, 'iniciante': 1 };
             
             let teamsHTML = '';
@@ -617,12 +734,26 @@ Necessário: ${playersPerTeam}`);
             const presentParticipants = participants.filter(p => p.present).length;
             const unusedPlayers = presentParticipants - totalPlayers;
             
-            teamInfo.innerHTML = `
-                <strong>Formação:</strong> ${teams.length} times completos formados<br>
-                <strong>Jogadores por time:</strong> ${playersPerTeam}<br>
-                <strong>Total de jogadores utilizados:</strong> ${totalPlayers}<br>
-                ${unusedPlayers > 0 ? `<strong>Jogadores não utilizados:</strong> ${unusedPlayers} (aguardando para próxima rodada)` : ''}
-            `;
+            let infoHTML = '';
+            if (method === 'players') {
+                infoHTML = `
+                    <strong>Método:</strong> Por jogadores por time<br>
+                    <strong>Times formados:</strong> ${teams.length}<br>
+                    <strong>Jogadores por time:</strong> ${playersPerTeam}<br>
+                    <strong>Total de jogadores utilizados:</strong> ${totalPlayers}<br>
+                    ${unusedPlayers > 0 ? `<strong>Jogadores não utilizados:</strong> ${unusedPlayers}` : ''}
+                `;
+            } else {
+                infoHTML = `
+                    <strong>Método:</strong> Por quantidade de times<br>
+                    <strong>Times formados:</strong> ${teams.length}<br>
+                    <strong>Jogadores por time:</strong> ${playersPerTeam} (base)<br>
+                    ${extraPlayers > 0 ? `<strong>Times com jogador extra:</strong> ${extraPlayers}` : ''}
+                    <strong>Total de jogadores:</strong> ${totalPlayers}
+                `;
+            }
+            
+            teamInfo.innerHTML = infoHTML;
             teamInfo.style.display = 'block';
             
             teamsContainer.scrollIntoView({ behavior: 'smooth' });
@@ -719,9 +850,13 @@ Necessário: ${playersPerTeam}`);
                     return `<p><strong>Time ${String.fromCharCode(65 + index)}:</strong> ${teamPlayers}</p>`;
                 }).join('');
                 
+                let methodText = record.method === 'players' 
+                    ? `Por jogadores por time (${record.playersPerTeam} jogadores/time)` 
+                    : `Por quantidade de times (${record.numberOfTeams} times)`;
+                
                 div.innerHTML = `
                     <h4>Times de ${record.date} às ${record.time}</h4>
-                    <p><strong>Formação:</strong> ${record.playersPerTeam} jogadores por time</p>
+                    <p><strong>Método:</strong> ${methodText}</p>
                     <p><strong>Total de times:</strong> ${record.teams.length}</p>
                     ${teamsHTML}
                 `;
